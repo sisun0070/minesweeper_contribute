@@ -9,6 +9,9 @@ This module owns:
 The logic lives in components.Board; this module should not implement rules.
 """
 
+import os
+
+import random
 import sys
 
 import pygame
@@ -71,7 +74,7 @@ class Renderer:
                 )
         pygame.draw.rect(self.screen, config.color_grid, rect, 1)
 
-    def draw_header(self, remaining_mines: int, time_text: str) -> None:
+    def draw_header(self, remaining_mines: int, time_text: str, best_text: str) -> None:
         """Draw the header bar containing remaining mines and elapsed time."""
         pygame.draw.rect(
             self.screen,
@@ -80,10 +83,14 @@ class Renderer:
         )
         left_text = f"Mines: {remaining_mines}"
         right_text = f"Time: {time_text}"
+        best_text_render = f"Best: {best_text}"
         left_label = self.header_font.render(left_text, True, config.color_header_text)
         right_label = self.header_font.render(right_text, True, config.color_header_text)
+        best_label = self.header_font.render(best_text_render, True, config.color_header_text)
         self.screen.blit(left_label, (10, 12))
         self.screen.blit(right_label, (config.width - right_label.get_width() - 10, 12))
+        self.screen.blit(best_label, (config.width // 2 - best_label.get_width() // 2, 12))
+
 
     def draw_result_overlay(self, text: str | None) -> None:
         """Draw a semi-transparent overlay with centered result text, if any."""
@@ -114,44 +121,47 @@ class InputController:
         if 0 <= col < self.game.board.cols and 0 <= row < self.game.board.rows:
             return int(col), int(row)
         return -1, -1
-
+    
     def handle_mouse(self, pos, button) -> None:
-         col, row = self.pos_to_grid(pos[0], pos[1])
-    if col == -1:
-        return
-
-    game = self.game
-
-    # 왼쪽 클릭 → 칸 열기
-    if button == config.mouse_left:
-        game.highlight_targets.clear()
-        # 첫 클릭 시 타이머 시작
-        if not game.started:
-            game.started = True
-            game.start_ticks_ms = pygame.time.get_ticks()
-        game.board.reveal(col, row)
-
-    # 오른쪽 클릭 → 깃발
-    elif button == config.mouse_right:
-        game.highlight_targets.clear()
-        game.board.toggle_flag(col, row)
-
-    # 가운데 클릭 → 주변 하이라이트 & 자동 오픈
-    elif button == config.mouse_middle:
-        cell = game.board.cells[game.board.index(col, row)]
-        if cell.state.is_revealed and cell.state.adjacent > 0:
-            neighbors = game.board.neighbors(col, row)
-            game.highlight_targets = {
-                (nc, nr)
-                for (nc, nr) in neighbors
-                if not game.board.cells[game.board.index(nc, nr)].state.is_revealed
-            }
-            game.highlight_until_ms = pygame.time.get_ticks() + config.highlight_duration_ms
-
-            # 자동 오픈 (플래그 수가 숫자와 같을 때)
-            if game.board.flagged_count(col, row) == cell.state.adjacent:
-                for (nc, nr) in neighbors:
-                    game.board.reveal(nc, nr)
+        col, row = self.pos_to_grid(pos[0], pos[1])
+        if col == -1:
+            return
+    
+        game = self.game
+    
+        # 왼쪽 클릭 → 칸 열기
+        if button == config.mouse_left:
+            game.highlight_targets.clear()
+            # 첫 클릭 시 타이머 시작
+            if not game.started:
+                game.started = True
+                game.start_ticks_ms = pygame.time.get_ticks()
+            game.board.reveal(col, row)
+    
+        # 오른쪽 클릭 → 깃발
+        elif button == config.mouse_right:
+            game.highlight_targets.clear()
+            game.board.toggle_flag(col, row)
+    
+        # 가운데 클릭 → 주변 하이라이트 & 자동 오픈
+        elif button == config.mouse_middle:
+            cell = game.board.cells[game.board.index(col, row)]
+            if cell.state.is_revealed and cell.state.adjacent > 0:
+                neighbors = game.board.neighbors(col, row)
+                game.highlight_targets = {
+                    (nc, nr)
+                    for (nc, nr) in neighbors
+                    if not game.board.cells[game.board.index(nc, nr)].state.is_revealed
+                }
+                game.highlight_until_ms = (
+                    pygame.time.get_ticks() + config.highlight_duration_ms
+                )
+    
+                # 아직 논리 개선 전이지만, 실행은 되게 둠
+                if game.board.flagged_count() == cell.state.adjacent:
+                    for (nc, nr) in neighbors:
+                        game.board.reveal(nc, nr)
+    
 
 class Game:
     """Main application object orchestrating loop and high-level state."""
@@ -169,10 +179,22 @@ class Game:
         self.started = False
         self.start_ticks_ms = 0
         self.end_ticks_ms = 0
+        self.selected_difficulty = "normal"
+        self.best_time_path = os.path.join(os.path.dirname(__file__), "best_time.txt")
+        self.best_time_ms = self._load_best_time()
+
+
+
+
 
     def reset(self):
         """Reset the game state and start a new board."""
-        self.board = Board(config.cols, config.rows, config.num_mines)
+        preset = config.difficulty_presets[self.selected_difficulty]
+        self.board = Board(
+            preset["cols"],
+            preset["rows"],
+            preset["mines"]
+        )
         self.renderer.board = self.board
         self.highlight_targets.clear()
         self.highlight_until_ms = 0
@@ -210,7 +232,10 @@ class Game:
         self.screen.fill(config.color_bg)
         remaining = max(0, config.num_mines - self.board.flagged_count())
         time_text = self._format_time(self._elapsed_ms())
-        self.renderer.draw_header(remaining, time_text)
+        best_text = "--:--"
+        if self.best_time_ms is not None:
+            best_text = self._format_time(self.best_time_ms)
+        self.renderer.draw_header(remaining, time_text, best_text)
         now = pygame.time.get_ticks()
         for r in range(self.board.rows):
             for c in range(self.board.cols):
@@ -224,16 +249,73 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
+            
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     self.reset()
+
+                elif event.key == pygame.K_1:
+                    self.selected_difficulty = "easy"
+                    self.reset()
+
+                elif event.key == pygame.K_2:
+                    self.selected_difficulty = "normal"
+                    self.reset()
+
+                elif event.key == pygame.K_3:
+                    self.selected_difficulty = "hard"
+                    self.reset()
+
+                elif event.key == pygame.K_h:
+                    self.give_hint()
+
+
             if event.type == pygame.MOUSEBUTTONDOWN:
                 self.input.handle_mouse(event.pos, event.button)
-        if (self.board.game_over or self.board.win) and self.started and not self.end_ticks_ms:
-            self.end_ticks_ms = pygame.time.get_ticks()
+
+        # 게임 클리어 처리 (한 번만)
+        if self.board.win and self.started:
+            if not self.end_ticks_ms:
+                self.end_ticks_ms = pygame.time.get_ticks()
+                elapsed = self.end_ticks_ms - self.start_ticks_ms
+
+                if self.best_time_ms is None or elapsed < self.best_time_ms:
+                    self.best_time_ms = elapsed
+                    print("SAVE BEST TIME:", elapsed)
+                    self._save_best_time(elapsed)
+
         self.draw()
         self.clock.tick(config.fps)
         return True
+        
+    def give_hint(self):
+        """Highlight one safe unrevealed cell as a hint."""
+        if self.board.game_over or self.board.win:
+            return
+
+        candidates = [
+            (cell.col, cell.row)
+            for cell in self.board.cells
+            if not cell.state.is_revealed and not cell.state.is_mine
+        ]
+
+        if not candidates:
+            return
+
+        col, row = random.choice(candidates)
+        self.highlight_targets = {(col, row)}
+        self.highlight_until_ms = pygame.time.get_ticks() + config.highlight_duration_ms
+
+    def _load_best_time(self) -> int | None:
+        try:
+            with open(self.best_time_path, "r") as f:
+                return int(f.read().strip())
+        except Exception:
+            return None
+
+    def _save_best_time(self, ms: int) -> None:
+        with open(self.best_time_path, "w") as f:
+            f.write(str(ms))
 
 
 def main() -> int:
