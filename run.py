@@ -172,10 +172,16 @@ class Game:
         self.started = False
         self.start_ticks_ms = 0
         self.end_ticks_ms = 0
+        self.selected_difficulty = "normal"
+
 
     def reset(self):
         """Reset the game state and start a new board."""
-        self.board = Board(config.cols, config.rows, config.num_mines)
+        preset = config.difficulty_presets[self.selected_difficulty]
+        self.board = Board(
+            preset["cols"],
+            preset["rows"],
+            preset["mines"])
         self.renderer.board = self.board
         self.highlight_targets.clear()
         self.highlight_until_ms = 0
@@ -230,6 +236,19 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     self.reset()
+        
+                elif event.key == pygame.K_1:
+                    self.selected_difficulty = "easy"
+                    self.reset()
+        
+                elif event.key == pygame.K_2:
+                    self.selected_difficulty = "normal"
+                    self.reset()
+        
+                elif event.key == pygame.K_3:
+                    self.selected_difficulty = "hard"
+                    self.reset()
+
             if event.type == pygame.MOUSEBUTTONDOWN:
                 self.input.handle_mouse(event.pos, event.button)
         if (self.board.game_over or self.board.win) and self.started and not self.end_ticks_ms:
