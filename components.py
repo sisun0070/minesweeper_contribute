@@ -69,7 +69,7 @@ class Board:
     def is_inbounds(self, col: int, row: int) -> bool:
         return 0 <= col < self.cols and 0 <= row < self.rows
     def neighbors(self, col: int, row: int) -> List[Tuple[int, int]]:
-         deltas = [
+        deltas = [
             (-1, -1), (0, -1), (1, -1),
             (-1, 0),            (1, 0),
             (-1, 1),  (0, 1),  (1, 1),
