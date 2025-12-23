@@ -1,18 +1,27 @@
-# Timer Game
+feature/issue-5-remaining-mines
+ Minesweeper Contribution Log
 
-## 프로젝트 소개
+ Issue #5
+- Confirmed that the remaining mine counter feature was already implemented.
+- Mines value updates correctly based on flagged cells.
+- No functional changes were required.
+
+ Timer Game
+
+프로젝트 소개
 이 프로젝트는 간단한 타이머 게임이다.
 시작 버튼을 누르면 타이머가 작동하며, 일정 시간이 지나면 게임이 종료된다.
 
-## 실행 방법
+ 실행 방법
 1. 저장소를 clone 한다.
 2. index.html 파일을 실행한다.
 
-## 구현 기능
+ 구현 기능
 - 게임이 끝나면 시간을 파일 기반으로 저장한다.
 - 다음 게임 실행 시 상단 UI에서 나의 베스트 기록을 확인할 수 있다.
 
-## 협업 과정
+협업 과정
 - Issue를 생성하여 기능을 정의하였다.
 - Contributor가 fork 후 기능을 구현하였다.
 - Pull Request와 코드 리뷰를 통해 기능을 병합하였다.
+implement
