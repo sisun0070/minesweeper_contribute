@@ -180,11 +180,14 @@ class Game:
         self.start_ticks_ms = 0
         self.end_ticks_ms = 0
         self.selected_difficulty = "normal"
+feature/issue-4-best-time
         self.best_time_path = os.path.join(os.path.dirname(__file__), "best_time.txt")
         self.best_time_ms = self._load_best_time()
 
 
 
+=======
+implement
 
 
     def reset(self):
@@ -193,8 +196,12 @@ class Game:
         self.board = Board(
             preset["cols"],
             preset["rows"],
+ feature/issue-4-best-time
             preset["mines"]
         )
+=======
+            preset["mines"])
+implement
         self.renderer.board = self.board
         self.highlight_targets.clear()
         self.highlight_until_ms = 0
@@ -253,6 +260,7 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     self.reset()
+ feature/issue-4-best-time
 
                 elif event.key == pygame.K_1:
                     self.selected_difficulty = "easy"
@@ -260,16 +268,27 @@ class Game:
 
                 elif event.key == pygame.K_2:
                     self.selected_difficulty = "normal"
+               
+                elif event.key == pygame.K_1:
+                    self.selected_difficulty = "easy"
                     self.reset()
-
+        
+                elif event.key == pygame.K_2:
+                    self.selected_difficulty = "normal"
+                    self.reset()
+        
+ implement
                 elif event.key == pygame.K_3:
                     self.selected_difficulty = "hard"
                     self.reset()
 
+ feature/issue-4-best-time
                 elif event.key == pygame.K_h:
                     self.give_hint()
 
 
+
+implement
             if event.type == pygame.MOUSEBUTTONDOWN:
                 self.input.handle_mouse(event.pos, event.button)
 
